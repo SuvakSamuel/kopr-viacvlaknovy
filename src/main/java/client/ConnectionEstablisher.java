@@ -53,6 +53,7 @@ public class ConnectionEstablisher {
         while(!everyFileRequested.isEmpty()) {
             File polledFileToSend = everyFileRequested.poll();
             String fileToSendParentless = polledFileToSend.getAbsolutePath().substring(sourceFile.getAbsolutePath().length()+1);
+            System.out.println(fileToSendParentless);
         }
 
         socket.close();
