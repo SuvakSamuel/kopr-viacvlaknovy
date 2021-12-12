@@ -60,11 +60,12 @@ public class Server {
 
         outputPW.println(everyFileFound.size());
         System.out.println("The server has found " + everyFileFound.size() + " files");
-
-
         System.out.println(everyFileFound);
+
         while (!everyFileFound.isEmpty()) {
-            outputPW.println(everyFileFound.poll().toString());
+            File toSend = everyFileFound.poll();
+            outputPW.println(toSend.toString());
+            outputPW.println(toSend.length());
         }
     }
 

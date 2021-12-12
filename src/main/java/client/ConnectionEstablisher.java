@@ -45,16 +45,39 @@ public class ConnectionEstablisher {
 
 
         for (int i = 0; i < numberOfFiles; i++){
-            String toPath = inputBR.readLine();
-            Path toFile = Paths.get(toPath);
-            everyFileRequested.add(toFile.toFile());
-        }
+            String string = inputBR.readLine();
+            Path path = Paths.get(string);
+            File fileToCheck = path.toFile();
+            String fileToSendParentless = fileToCheck.getAbsolutePath().substring(sourceFile.getAbsolutePath().length()+1);
+            File fileToCheckFull = new File(destinationFile.getAbsolutePath() + "\\" + fileToSendParentless);
 
-        while(!everyFileRequested.isEmpty()) {
-            File polledFileToSend = everyFileRequested.poll();
-            String fileToSendParentless = polledFileToSend.getAbsolutePath().substring(sourceFile.getAbsolutePath().length()+1);
-            System.out.println(fileToSendParentless);
+            Long serverSentFileSize = Long.parseLong(inputBR.readLine());
+
+            System.out.println("Checking for existence of " + fileToCheckFull + " with the size " + serverSentFileSize);
+            if(fileToCheckFull.exists()) {
+                System.out.println("-- Client says it already has the file " + fileToCheckFull + " , checking size");
+                Long fileAlreadyExistsSize = fileToCheck.length();
+                System.out.println("-- The file has the size " + fileAlreadyExistsSize);
+                if(fileAlreadyExistsSize < serverSentFileSize) {
+                    System.out.println("-- File sizes are not the same, downloading again");
+                    everyFileNotDownloaded.add(fileToCheckFull);
+                } else {
+                    System.out.println("-- The file sizes are the same, client will not download the file");
+                }
+            } else {
+                everyFileNotDownloaded.add(fileToCheckFull);
+            }
+
+            //everyFileRequested.add(toFile.toFile());
         }
+        System.out.println("These files are to be downloaded, sending them to server");
+        System.out.println(everyFileNotDownloaded);
+        System.out.println("There is " + everyFileNotDownloaded.size() + " of them");
+
+        /*while(!everyFileRequested.isEmpty()) {
+            File polledFileToSend = everyFileRequested.poll();
+
+        }*/
 
         socket.close();
         //connectSockets();

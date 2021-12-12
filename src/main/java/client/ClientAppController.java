@@ -37,7 +37,7 @@ public class ClientAppController {
     @FXML
     void initialize() {
         sourceDirectoryTextField.setText("dir\\");
-        destinationDirectoryTextField.setText("C:\\Users\\suvac\\IdeaProjects\\kopr-projekt\\dir2\\");
+        destinationDirectoryTextField.setText("C:\\Users\\suvac\\IdeaProjects\\kopr-viacvlaknovy\\dir2\\");
         numberOfSocketsTextField.setText("2");
         statusLabel.setText("Čakám");
     }
