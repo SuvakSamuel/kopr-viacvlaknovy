@@ -1,0 +1,8 @@
+client\ConnectionEstablisher.class
+client\ClientApp.class
+server\FileSearcher.class
+client\ClientReceiver.class
+server\FileInformation.class
+server\ServerSender.class
+server\Server.class
+client\ClientAppController.class
