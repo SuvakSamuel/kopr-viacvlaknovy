@@ -4,53 +4,37 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
 public class ServerSender implements Callable<Void> {
 
-    private ServerSocket serverSocket;
-    private Socket socket;
-    private BlockingQueue<File> everyFile;
-    private File polledFileToSend;
-    private File requestedDir;
+    private Socket serverSocket;
 
-    public ServerSender(ServerSocket socket, BlockingQueue everyFile, File requestedDir) {
+    public ServerSender(Socket socket) {
         this.serverSocket = socket;
-        this.everyFile = everyFile;
-        this.requestedDir = requestedDir;
     }
 
     @Override
     public Void call() throws Exception {
-        socket = serverSocket.accept();
-        while (!everyFile.isEmpty()) {
-            polledFileToSend = everyFile.poll();
-            if (polledFileToSend != null) {
-                try {
-                    sendFile(socket, polledFileToSend);
-                } catch (SocketException e) {
-                    System.out.println("Connection issue, closing server socket");
-                    socket.close();
-                    return null;
-                }
-            }
+        while (true) {
+            sendFile(serverSocket);
         }
-        socket.close();
-        return null;
     }
 
-    public void sendFile(Socket socket, File polledFileToSend) throws IOException {
-        String fileToSendParentless = polledFileToSend.getAbsolutePath().substring(requestedDir.getAbsolutePath().length()+1);
-        System.out.println("Server socket is sending " + fileToSendParentless + " to client");
+    public void sendFile(Socket socket) throws IOException {
+        BufferedReader inputBR = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        String serverRequest = inputBR.readLine();
+        System.out.println(serverRequest);
+        Path fileToSendPath = Paths.get(serverRequest);
+        File fileToSend = fileToSendPath.toFile();
 
-        DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
-        outputPW.writeUTF(fileToSendParentless);
+        System.out.println("Server is now sending " + fileToSend);
 
-        Long fileToSendSize = polledFileToSend.length();
-        outputPW.writeLong(fileToSendSize);
-
-        FileInputStream fileToSendFIS = new FileInputStream(polledFileToSend.getAbsolutePath());
+        /*DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
+        FileInputStream fileToSendFIS = new FileInputStream(fileToSend.getAbsolutePath());
         BufferedInputStream fileToSendBIS = new BufferedInputStream(fileToSendFIS);
         OutputStream output = socket.getOutputStream();
         byte[] buffer = new byte[2048];
@@ -60,7 +44,7 @@ public class ServerSender implements Callable<Void> {
             fileToSendSize -= bytesRead;
         }
         output.flush();
-        fileToSendBIS.close();
+        fileToSendBIS.close();*/
     }
 }
 

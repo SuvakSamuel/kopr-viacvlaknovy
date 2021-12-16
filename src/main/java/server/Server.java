@@ -4,38 +4,56 @@ import java.io.*;
 import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
 public class Server {
 
-    private ServerSocket serverSocket;
+    private ServerSocket metadataSocket;
+    private ServerSocket fileSocket;
     private File requestedDir;
-    private int socketCount;
     private BlockingQueue<File> everyFileFound;
-    private BlockingQueue<File> everyFileToSend;
 
     public static void main(String[] args) throws IOException {
         Server server = new Server();
-        server.serverSocket = new ServerSocket(9001);
+        server.metadataSocket = new ServerSocket(9501);
+        server.fileSocket = new ServerSocket(9503);
         System.out.println("Server is now running...");
         System.out.println("Waiting for a request");
-        Socket socket = server.serverSocket.accept();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
 
+        // fixedthread na 2, jeden ma filerequest a druhy ma serversendery (oba maju rozlicne porty)
         while(true) {
-            try {
-                server.listenForFileRequests(socket);
-            } catch (SocketException e) {
-                System.out.println("Closing server socket");
-                System.out.println("Restart server to copy another directory");
-                socket.close();
-                break;
-            }
+            executor.execute(() -> {
+                try {
+                    System.out.println("in metadata thread");
+                    Socket metaS = server.metadataSocket.accept();
+                    server.exchangeFileData(metaS);
+                } catch (SocketException e) {
+                    System.out.println("Something's wrong with the metadata socket");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            executor.execute(() -> {
+                try {
+                    System.out.println("in filesend thread");
+                    Socket fileS = server.fileSocket.accept();
+                    server.sendFiles(fileS);
+                } catch (SocketException e) {
+                    System.out.println("Something's wrong with the file socket");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         }
     }
 
-    public void listenForFileRequests(Socket socket) throws IOException {
+    //TODO wtf is this server
+
+    public void exchangeFileData(Socket socket) throws IOException {
         PrintWriter outputPW = new PrintWriter(socket.getOutputStream(), true);
         BufferedReader inputBR = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
@@ -48,13 +66,6 @@ public class Server {
         System.out.println("The server received a request for directory " + request);
         Path requestFilePath = Paths.get(request);
         requestedDir = requestFilePath.toFile();
-
-        String destination = inputBR.readLine();
-        System.out.println("The server has acknowledged the target destination of " + destination);
-
-        String sockets = inputBR.readLine();
-        System.out.println("The server has acknowledged that the number of sockets should be " + sockets);
-        socketCount = Integer.parseInt(sockets);
 
         searchRequestedDirectory();
 
@@ -69,33 +80,10 @@ public class Server {
         }
     }
 
-    public void send() {
-        System.out.println("------------sending-----------");
-        ExecutorService executor = Executors.newFixedThreadPool(socketCount);
-        CompletionService<Void> completionService = new ExecutorCompletionService<>(executor);
-
-        List<Future<Void>> futures = new ArrayList<>();
-        for (int i = 0; i < socketCount; i++) {
-            try {
-                futures.add(completionService.submit(new ServerSender(serverSocket, everyFileToSend, requestedDir)));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        for (int i = 0; i < socketCount; i++) {
-            try {
-                completionService.take().get();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }catch (ExecutionException e) {
-                System.out.println("Server - Something's not quite right");
-                e.printStackTrace();
-                executor.shutdownNow();
-                break;
-            }
-        }
-        executor.shutdown();
-        System.out.println("-----------Job's done!----------");
+    public void sendFiles(Socket socket) throws Exception {
+        System.out.println("---------sending---------");
+        Callable send = new ServerSender(socket);
+        send.call();
     }
 
     public void searchRequestedDirectory() {

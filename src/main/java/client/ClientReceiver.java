@@ -3,66 +3,69 @@ package client;
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URI;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 
 public class ClientReceiver implements Callable<Void> {
 
     private Socket socket;
-    private String destinationFile;
-    private int exceptionCounter;
+    private File destinationFile;
+    private BlockingQueue<File> everyFileToBeDownLoaded;
 
-    public ClientReceiver(String destinationFile) {
+    public ClientReceiver(File destinationFile, BlockingQueue<File> everyFileToBeDownloaded) {
         this.destinationFile = destinationFile;
+        this.everyFileToBeDownLoaded = everyFileToBeDownloaded;
     }
+
+    //progressbar sa updatuje tuna
 
     @Override
     public Void call() throws Exception {
-        socket = new Socket("localhost", 9001);
+        socket = new Socket("localhost", 9503);
         while(true) {
-            try {
-                receiveFile();
-            } catch (EOFException e) {
-                System.out.println("Closing client socket");
-                socket.close();
+            File poll = everyFileToBeDownLoaded.poll();
+            if(poll == null) {
                 break;
-            } catch (SocketException e) {
-                System.out.println("Connection lost, closing client socket");
-                socket.close();
-                break;
-            } catch (FileNotFoundException e) {
-                System.out.println("Access denied, aborting attempt to download");
+            } else {
+                try {
+                    receiveFile(poll);
+                } catch (SocketException e) {
+                    System.out.println("Connection lost, closing client socket");
+                    socket.close();
+                }
             }
         }
+        socket.close();
         return null;
     }
 
-    public void receiveFile() throws IOException {
-        DataInputStream inputBR = new DataInputStream(socket.getInputStream());
+    public void receiveFile(File file) throws IOException {
+        // https://www.programiz.com/java-programming/examples/get-relative-path
+        System.out.println("ClientReceiver is looking to create " + file);
+        URI requestedPath = file.toURI();
+        URI destinationPath = destinationFile.toURI();
+        URI relativePathToSendToServer = destinationPath.relativize(requestedPath);
+        System.out.println("ClientReceiver is requesting server for " + relativePathToSendToServer);
+
+        DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
+        outputPW.writeUTF(relativePathToSendToServer.toString());
+
+        //prijmi data
+
+        /*DataInputStream inputBR = new DataInputStream(socket.getInputStream());
 
         String serverSending = inputBR.readUTF();
         Long serverSentFileSize = inputBR.readLong();
         System.out.println("Client socket received from the server " + serverSending + ", the file size is " + serverSentFileSize);
 
         File fileToCreate = new File(destinationFile + serverSending);
-        Long downloadedSize = 0L;
+        Long downloadedSize = 0L;*/
 
-        if(fileToCreate.exists()) {
-            System.out.println("-- Client says it already has the file, checking size");
-            Long fileAlreadyExistsSize = fileToCreate.length();
-            System.out.println("-- The file has the size " + fileAlreadyExistsSize);
-            if(!fileAlreadyExistsSize.equals(serverSentFileSize)) {
-                System.out.println("-- File sizes are not the same, downloading again");
-            } else {
-                System.out.println("-- The file sizes are the same, skipping operation");
-                inputBR.skip(fileAlreadyExistsSize);
-                return;
-            }
-        } else {
-            fileToCreate.getParentFile().mkdirs();
-            fileToCreate.createNewFile();
-        }
+/*      fileToCreate.getParentFile().mkdirs();
+        fileToCreate.createNewFile();*/
 
-        FileOutputStream fileOut = new FileOutputStream(fileToCreate.getAbsolutePath());
+        /*FileOutputStream fileOut = new FileOutputStream(fileToCreate.getAbsolutePath());
         BufferedOutputStream bufferOut = new BufferedOutputStream(fileOut);
         byte[] byteArr;
         int offset = 2048;
@@ -79,6 +82,6 @@ public class ClientReceiver implements Callable<Void> {
             bufferOut.write(byteArr, 0, offset);
         }
         bufferOut.flush();
-        bufferOut.close();
+        bufferOut.close();*/
     }
 }

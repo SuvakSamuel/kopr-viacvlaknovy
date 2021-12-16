@@ -26,7 +26,7 @@ public class ConnectionEstablisher {
     }
 
     public void exchangeNecessaryInformation(String requestedFilePath, String destinationFilePath, int socketCount) throws IOException {
-        Socket socket = new Socket("localhost", 9001);
+        Socket socket = new Socket("localhost", 9501);
 
         PrintWriter outputPW = new PrintWriter(socket.getOutputStream(), true);
         BufferedReader inputBR = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -34,15 +34,8 @@ public class ConnectionEstablisher {
         System.out.println("Requesting " + requestedFilePath);
         outputPW.println(requestedFilePath);
 
-        System.out.println("Destination should be " + destinationFilePath);
-        outputPW.println(destinationFilePath);
-
-        System.out.println("The number of sockets the client requested is " + socketCount);
-        outputPW.println(socketCount);
-
         numberOfFiles = Integer.parseInt(inputBR.readLine());
-        System.out.println("The server says that it found " + numberOfFiles + " files");
-
+        System.out.println("The server says that it found " + numberOfFiles + " files in " + requestedFilePath);
 
         for (int i = 0; i < numberOfFiles; i++){
             String string = inputBR.readLine();
@@ -67,20 +60,13 @@ public class ConnectionEstablisher {
             } else {
                 everyFileNotDownloaded.add(fileToCheckFull);
             }
-
-            //everyFileRequested.add(toFile.toFile());
         }
         System.out.println("These files are to be downloaded, sending them to server");
         System.out.println(everyFileNotDownloaded);
         System.out.println("There is " + everyFileNotDownloaded.size() + " of them");
 
-        /*while(!everyFileRequested.isEmpty()) {
-            File polledFileToSend = everyFileRequested.poll();
-
-        }*/
-
         socket.close();
-        //connectSockets();
+        connectSockets();
     }
 
     public void connectSockets() {
@@ -91,7 +77,7 @@ public class ConnectionEstablisher {
         List<Future<Void>> futures = new ArrayList<>();
         for (int i = 0; i < socketCount; i++) {
             try {
-                //futures.add(completionService.submit(new ClientReceiver(destinationFile)));
+                futures.add(completionService.submit(new ClientReceiver(destinationFile, everyFileNotDownloaded)));
             } catch (Exception e) {
                 e.printStackTrace();
             }
