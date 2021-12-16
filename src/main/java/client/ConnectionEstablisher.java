@@ -77,7 +77,7 @@ public class ConnectionEstablisher {
         List<Future<Void>> futures = new ArrayList<>();
         for (int i = 0; i < socketCount; i++) {
             try {
-                futures.add(completionService.submit(new ClientReceiver(destinationFile, everyFileNotDownloaded)));
+                futures.add(completionService.submit(new ClientReceiver(sourceFile, destinationFile, everyFileNotDownloaded)));
             } catch (Exception e) {
                 e.printStackTrace();
             }

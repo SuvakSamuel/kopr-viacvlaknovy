@@ -20,8 +20,13 @@ public class ServerSender implements Callable<Void> {
     @Override
     public Void call() throws Exception {
         while (true) {
-            sendFile(serverSocket);
+            try {
+                sendFile(serverSocket);
+            } catch (NullPointerException e) {
+                break;
+            }
         }
+        return null;
     }
 
     public void sendFile(Socket socket) throws IOException {
@@ -31,7 +36,7 @@ public class ServerSender implements Callable<Void> {
         Path fileToSendPath = Paths.get(serverRequest);
         File fileToSend = fileToSendPath.toFile();
 
-        System.out.println("Server is now sending " + fileToSend);
+        System.out.println("Server is now sending " + fileToSend.getAbsolutePath());
 
         /*DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
         FileInputStream fileToSendFIS = new FileInputStream(fileToSend.getAbsolutePath());

@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -82,7 +81,7 @@ public class Server {
 
     public void sendFiles(Socket socket) throws Exception {
         System.out.println("---------sending---------");
-        Callable send = new ServerSender(socket);
+        Callable<Void> send = new ServerSender(socket);
         send.call();
     }
 

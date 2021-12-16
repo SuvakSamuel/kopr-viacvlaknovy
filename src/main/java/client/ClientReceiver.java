@@ -11,9 +11,11 @@ public class ClientReceiver implements Callable<Void> {
 
     private Socket socket;
     private File destinationFile;
+    private File requestedFile;
     private BlockingQueue<File> everyFileToBeDownLoaded;
 
-    public ClientReceiver(File destinationFile, BlockingQueue<File> everyFileToBeDownloaded) {
+    public ClientReceiver(File requestedFile, File destinationFile, BlockingQueue<File> everyFileToBeDownloaded) {
+        this.requestedFile = requestedFile;
         this.destinationFile = destinationFile;
         this.everyFileToBeDownLoaded = everyFileToBeDownloaded;
     }
@@ -46,10 +48,10 @@ public class ClientReceiver implements Callable<Void> {
         URI requestedPath = file.toURI();
         URI destinationPath = destinationFile.toURI();
         URI relativePathToSendToServer = destinationPath.relativize(requestedPath);
-        System.out.println("ClientReceiver is requesting server for " + relativePathToSendToServer);
+        System.out.println("ClientReceiver is requesting server for " + requestedFile + "/" + relativePathToSendToServer);
 
-        DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
-        outputPW.writeUTF(relativePathToSendToServer.toString());
+        PrintWriter outputPW = new PrintWriter(socket.getOutputStream(), true);
+        outputPW.println(requestedFile + "/" +relativePathToSendToServer.toString());
 
         //prijmi data
 
