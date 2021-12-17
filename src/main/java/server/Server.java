@@ -14,17 +14,19 @@ public class Server {
     private ServerSocket fileSocket;
     private File requestedDir;
     private BlockingQueue<File> everyFileFound;
+    private ExecutorService fileDownloadExecutor;
 
     public static void main(String[] args) throws IOException {
         Server server = new Server();
         server.metadataSocket = new ServerSocket(9501);
         server.fileSocket = new ServerSocket(9503);
         System.out.println("Server is now running...");
-        System.out.println("Waiting for a request");
         ExecutorService executor = Executors.newFixedThreadPool(2);
+        server.fileDownloadExecutor = Executors.newCachedThreadPool();
 
         // fixedthread na 2, jeden ma filerequest a druhy ma serversendery (oba maju rozlicne porty)
         while(true) {
+
             executor.execute(() -> {
                 try {
                     System.out.println("in metadata thread");
@@ -40,17 +42,21 @@ public class Server {
                 try {
                     System.out.println("in filesend thread");
                     Socket fileS = server.fileSocket.accept();
-                    server.sendFiles(fileS);
+                    System.out.println("New client file socket detected, creating server socket");
+                    Callable<Void> send = new ServerSender(fileS);
+                    server.fileDownloadExecutor.submit(send);
+                    //server.sendFiles(fileS);
                 } catch (SocketException e) {
                     System.out.println("Something's wrong with the file socket");
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                 }
             });
         }
     }
 
-    //TODO wtf is this server
+    //TODO server thread ma problem spracovat viac nez 2 prichadzajucich socketov naraz
+    //TODO file names nesmu mat medzery v sebe lebo proste XDDDDDDD
 
     public void exchangeFileData(Socket socket) throws IOException {
         PrintWriter outputPW = new PrintWriter(socket.getOutputStream(), true);
@@ -79,10 +85,23 @@ public class Server {
         }
     }
 
-    public void sendFiles(Socket socket) throws Exception {
-        System.out.println("---------sending---------");
+    public void sendFiles(Socket socket) throws Throwable {
+        System.out.println("-----*****-----creating new server socket-----*****-----");
         Callable<Void> send = new ServerSender(socket);
-        send.call();
+        fileDownloadExecutor.submit(send);
+
+
+        /*Future<Void> future = fileDownloadExecutor.submit(send);
+        try {
+            future.get(2, TimeUnit.MINUTES);
+        } catch (TimeoutException e) {
+            System.out.println("Server socket duration timed out");
+        } catch (ExecutionException e) {
+            System.out.println("Exception in a server socket thread, aborting operation");
+            throw e.getCause();
+        } finally {
+            future.cancel(true);
+        }*/
     }
 
     public void searchRequestedDirectory() {

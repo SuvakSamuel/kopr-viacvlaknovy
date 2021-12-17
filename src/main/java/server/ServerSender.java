@@ -19,27 +19,38 @@ public class ServerSender implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
+        System.out.println("New server socket " + Thread.currentThread().getId() + " created");
         while (true) {
             try {
                 sendFile(serverSocket);
-            } catch (NullPointerException e) {
+            } catch (EOFException e) {
+                System.out.println("End of file, closing server socket");
                 break;
+            } catch (NullPointerException e) {
+                System.out.println("Null detected, closing server socket");
+                break;
+            } catch (FileNotFoundException e) {
+                System.out.println("File not found for some reason, skipping operation");
+                e.printStackTrace();
             }
         }
+        System.out.println("Server socket " + Thread.currentThread().getId() + " finished");
         return null;
     }
 
     public void sendFile(Socket socket) throws IOException {
-        BufferedReader inputBR = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        String serverRequest = inputBR.readLine();
-        System.out.println(serverRequest);
-        Path fileToSendPath = Paths.get(serverRequest);
+        DataInputStream inputBR = new DataInputStream(socket.getInputStream());
+        String serverRequest = inputBR.readUTF();
+        Path fileToSendPath = Paths.get(serverRequest).toAbsolutePath();
         File fileToSend = fileToSendPath.toFile();
 
-        System.out.println("Server is now sending " + fileToSend.getAbsolutePath());
+        DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
+        System.out.println("Server socket " + Thread.currentThread().getId() + " is now sending " + fileToSend);
 
-        /*DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
-        FileInputStream fileToSendFIS = new FileInputStream(fileToSend.getAbsolutePath());
+        Long fileToSendSize = fileToSend.length();
+        outputPW.writeLong(fileToSendSize);
+
+        FileInputStream fileToSendFIS = new FileInputStream(fileToSend);
         BufferedInputStream fileToSendBIS = new BufferedInputStream(fileToSendFIS);
         OutputStream output = socket.getOutputStream();
         byte[] buffer = new byte[2048];
@@ -49,7 +60,7 @@ public class ServerSender implements Callable<Void> {
             fileToSendSize -= bytesRead;
         }
         output.flush();
-        fileToSendBIS.close();*/
+        fileToSendBIS.close();
     }
 }
 

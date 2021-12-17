@@ -24,6 +24,7 @@ public class ClientReceiver implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
+        System.out.println("ClientReceiver " + Thread.currentThread().getId() + " created");
         socket = new Socket("localhost", 9503);
         while(true) {
             File poll = everyFileToBeDownLoaded.poll();
@@ -34,40 +35,45 @@ public class ClientReceiver implements Callable<Void> {
                     receiveFile(poll);
                 } catch (SocketException e) {
                     System.out.println("Connection lost, closing client socket");
+                    break;
+                } catch (EOFException e) {
+                    System.out.println("Seems to be the end of connection, closing client socket");
+                    break;
+                }
+                if (Thread.currentThread().isInterrupted()) {
+                    System.out.println("Interruption detected, closing client socket");
                     socket.close();
+                    return null;
                 }
             }
         }
+        System.out.println("Closing ClientReceiver " + Thread.currentThread().getId());
         socket.close();
         return null;
     }
 
     public void receiveFile(File file) throws IOException {
         // https://www.programiz.com/java-programming/examples/get-relative-path
-        System.out.println("ClientReceiver is looking to create " + file);
         URI requestedPath = file.toURI();
         URI destinationPath = destinationFile.toURI();
         URI relativePathToSendToServer = destinationPath.relativize(requestedPath);
-        System.out.println("ClientReceiver is requesting server for " + requestedFile + "/" + relativePathToSendToServer);
 
-        PrintWriter outputPW = new PrintWriter(socket.getOutputStream(), true);
-        outputPW.println(requestedFile + "/" +relativePathToSendToServer.toString());
+        DataOutputStream outputPW = new DataOutputStream(socket.getOutputStream());
+        String request = requestedFile + "/" + relativePathToSendToServer;
+        System.out.println("ClientReceiver " + Thread.currentThread().getId() + " is requesting server for " + request);
+        outputPW.writeUTF(request);
 
         //prijmi data
 
-        /*DataInputStream inputBR = new DataInputStream(socket.getInputStream());
-
-        String serverSending = inputBR.readUTF();
+        DataInputStream inputBR = new DataInputStream(socket.getInputStream());
         Long serverSentFileSize = inputBR.readLong();
-        System.out.println("Client socket received from the server " + serverSending + ", the file size is " + serverSentFileSize);
 
-        File fileToCreate = new File(destinationFile + serverSending);
-        Long downloadedSize = 0L;*/
+        Long downloadedSize = 0L;
 
-/*      fileToCreate.getParentFile().mkdirs();
-        fileToCreate.createNewFile();*/
+        file.getParentFile().mkdirs();
+        file.createNewFile();
 
-        /*FileOutputStream fileOut = new FileOutputStream(fileToCreate.getAbsolutePath());
+        FileOutputStream fileOut = new FileOutputStream(file.getAbsolutePath());
         BufferedOutputStream bufferOut = new BufferedOutputStream(fileOut);
         byte[] byteArr;
         int offset = 2048;
@@ -84,6 +90,6 @@ public class ClientReceiver implements Callable<Void> {
             bufferOut.write(byteArr, 0, offset);
         }
         bufferOut.flush();
-        bufferOut.close();*/
+        bufferOut.close();
     }
 }
